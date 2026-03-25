@@ -314,100 +314,185 @@
   </div>
 
   <script>
-    // Update time
-    document.getElementById('time').textContent = new Date().toLocaleString();
+    // ---------------------------------------------------------------------------
+    // Shared helpers
+    // ---------------------------------------------------------------------------
 
-    // Chart.js - Task Completion
-    const taskCtx = document.getElementById('taskChart').getContext('2d');
-    new Chart(taskCtx, {
-      type: 'line',
-      data: {
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        datasets: [{
-          label: 'Tasks Completed',
-          data: [340, 385, 320, 410, 395, 280, 250],
-          borderColor: '#60a5fa',
-          backgroundColor: 'rgba(96, 165, 250, 0.1)',
-          tension: 0.4,
-          fill: true,
-          pointBackgroundColor: '#60a5fa',
-          pointBorderColor: '#1e293b',
-          pointBorderWidth: 2,
-          pointRadius: 5
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: true, grid: { color: 'rgba(96, 165, 250, 0.1)' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Tasks' } },
-          x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+    // Common axis / grid styling reused across charts to avoid repetition
+    const GRID_COLOR  = 'rgba(96, 165, 250, 0.1)';
+    const TICK_COLOR  = '#94a3b8';
+
+    function axisDefaults(extra) {
+      return Object.assign({ grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR } }, extra);
+    }
+
+    // Small helper: return a value slightly varied from the seed so simulated
+    // real-time updates look alive without wild swings.
+    function jitter(value, range) {
+      return Math.max(0, value + Math.round((Math.random() * 2 - 1) * range));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Clock – update every minute instead of only once on load
+    // ---------------------------------------------------------------------------
+    function updateClock() {
+      var timeEl = document.getElementById('time');
+      if (timeEl) {
+        timeEl.textContent = new Date().toLocaleString();
+      }
+    }
+    updateClock();
+    setInterval(updateClock, 60000);
+
+    // ---------------------------------------------------------------------------
+    // Initialise charts after the page (and Chart.js) has fully loaded
+    // ---------------------------------------------------------------------------
+    window.addEventListener('load', function () {
+      if (typeof Chart === 'undefined') {
+        console.error('Chart.js failed to load – charts will not be rendered.');
+        return;
+      }
+
+      // Cache canvas element references once to avoid repeated DOM lookups
+      var canvases = {
+        task:        document.getElementById('taskChart'),
+        battery:     document.getElementById('batteryChart'),
+        performance: document.getElementById('performanceChart'),
+        utilization: document.getElementById('utilizationChart')
+      };
+
+      // Verify all expected canvases are present before proceeding
+      for (var key in canvases) {
+        if (!canvases[key]) {
+          console.error('Canvas element not found: ' + key);
+          return;
         }
       }
-    });
 
-    // Battery Distribution
-    const batteryCtx = document.getElementById('batteryChart').getContext('2d');
-    new Chart(batteryCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['85-100%', '70-84%', '50-69%', '<50%'],
-        datasets: [{
-          data: [40, 35, 20, 5],
-          backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
-          borderColor: '#1e293b',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: '#cbd5e1' } } }
-      }
-    });
-
-    // Weekly Performance
-    const perfCtx = document.getElementById('performanceChart').getContext('2d');
-    new Chart(perfCtx, {
-      type: 'bar',
-      data: {
-        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-        datasets: [{
-          label: 'Performance Score',
-          data: [94, 96, 98, 97],
-          backgroundColor: '#60a5fa',
-          borderColor: '#3b82f6',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { max: 100, grid: { color: 'rgba(96, 165, 250, 0.1)' }, ticks: { color: '#94a3b8' } },
-          x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+      // ---- Task Completion (line) ------------------------------------------
+      var taskChart = new Chart(canvases.task.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          datasets: [{
+            label: 'Tasks Completed',
+            data: [340, 385, 320, 410, 395, 280, 250],
+            borderColor: '#60a5fa',
+            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#60a5fa',
+            pointBorderColor: '#1e293b',
+            pointBorderWidth: 2,
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 400 },
+          plugins: { legend: { display: false } },
+          scales: {
+            y: axisDefaults({ beginAtZero: true, title: { display: true, text: 'Tasks', color: TICK_COLOR } }),
+            x: axisDefaults({ grid: { display: false } })
+          }
         }
-      }
-    });
+      });
 
-    // Unit Utilization
-    const utilCtx = document.getElementById('utilizationChart').getContext('2d');
-    new Chart(utilCtx, {
-      type: 'radar',
-      data: {
-        labels: ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5'],
-        datasets: [{
-          label: 'Utilization %',
-          data: [92, 88, 95, 85, 90],
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          pointBackgroundColor: '#10b981'
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: '#cbd5e1' } } },
-        scales: { r: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(96, 165, 250, 0.1)' }, max: 100 } }
-      }
+      // ---- Battery Distribution (doughnut) ------------------------------------
+      var batteryChart = new Chart(canvases.battery.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+          labels: ['85-100%', '70-84%', '50-69%', '<50%'],
+          datasets: [{
+            data: [40, 35, 20, 5],
+            backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+            borderColor: '#1e293b',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 400 },
+          plugins: { legend: { labels: { color: '#cbd5e1' } } }
+        }
+      });
+
+      // ---- Weekly Performance (bar) ------------------------------------------
+      var perfChart = new Chart(canvases.performance.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+          datasets: [{
+            label: 'Performance Score',
+            data: [94, 96, 98, 97],
+            backgroundColor: '#60a5fa',
+            borderColor: '#3b82f6',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 400 },
+          plugins: { legend: { display: false } },
+          scales: {
+            y: axisDefaults({ max: 100 }),
+            x: axisDefaults({ grid: { display: false } })
+          }
+        }
+      });
+
+      // ---- Unit Utilization (radar) ------------------------------------------
+      var utilChart = new Chart(canvases.utilization.getContext('2d'), {
+        type: 'radar',
+        data: {
+          labels: ['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4', 'Unit 5'],
+          datasets: [{
+            label: 'Utilization %',
+            data: [92, 88, 95, 85, 90],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            pointBackgroundColor: '#10b981'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 400 },
+          plugins: { legend: { labels: { color: '#cbd5e1' } } },
+          scales: { r: { ticks: { color: TICK_COLOR }, grid: { color: GRID_COLOR }, max: 100 } }
+        }
+      });
+
+      // -----------------------------------------------------------------------
+      // Real-time simulation: refresh chart data every 5 seconds.
+      // Stored chart instances are updated in-place via chart.update() which is
+      // far cheaper than destroying and recreating them on every tick.
+      // -----------------------------------------------------------------------
+      var baseTaskData  = [340, 385, 320, 410, 395, 280, 250];
+      var baseUtilData  = [92, 88, 95, 85, 90];
+      var basePerfData  = [94, 96, 98, 97];
+      var baseBattData  = [40, 35, 20, 5];
+
+      setInterval(function () {
+        // Task completion: small random variation around each base value
+        taskChart.data.datasets[0].data = baseTaskData.map(function (v) { return jitter(v, 15); });
+        taskChart.update('none'); // 'none' skips the transition animation for frequent updates
+
+        // Battery distribution: slight rebalancing
+        batteryChart.data.datasets[0].data = baseBattData.map(function (v) { return jitter(v, 2); });
+        batteryChart.update('none');
+
+        // Performance scores: subtle drift
+        perfChart.data.datasets[0].data = basePerfData.map(function (v) { return jitter(v, 1); });
+        perfChart.update('none');
+
+        // Utilization: small per-unit variation
+        utilChart.data.datasets[0].data = baseUtilData.map(function (v) { return jitter(v, 3); });
+        utilChart.update('none');
+      }, 5000);
     });
   </script>
 </body>
